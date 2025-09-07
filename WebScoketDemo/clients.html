@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Demo</title>
+</head>
+<body>
+    <h1>WebSocket Demo</h1>
+    <div id="messages"></div>
+    <script>
+        const messagesDiv = document.getElementById('messages');
+        const ws = new WebSocket('ws://127.0.0.1:8000');
+
+        ws.onmessage = function(event) {
+            messagesDiv.innerHTML += `<p>Received: ${event.data}</p>`;
+            // console.log(event.data)
+        };
+
+        // 下面的代码是发送命令，控制气囊
+        // // 要发送的数据（控制气囊）
+        // const data = {
+        //     "airbag": "[0,1,2]",
+        //     "time": "5"
+        // };
+
+        // // 将数据转换为JSON字符串
+        // const jsonData = JSON.stringify(data);
+
+        // setInterval(() => {
+        //     if (ws.readyState === WebSocket.OPEN) {
+        //         ws.send(jsonData);
+        //     } else {
+        //         console.log('WebSocket is not open.');
+        //     }
+        // }, 2000);
+
+    </script>
+</body>
+</html>
