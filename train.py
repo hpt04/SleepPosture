@@ -26,7 +26,6 @@ def train_model():
     
     # 训练循环
     num_epochs = 100
-    best_val_acc = 0.0
     
     # 创建保存模型的目录
     save_dir = "saved_models"
@@ -63,7 +62,8 @@ def train_model():
                 _, predicted = torch.max(outputs, 1)
                 val_total += labels.size(0)
                 val_correct += (predicted == labels).sum().item()
-        
+
+        val_acc = 100*val_correct/val_total
         print(f'Epoch [{epoch+1}/{num_epochs}]')
         print(f'Train Loss: {running_loss/len(train_loader):.4f}, Train Acc: {100*correct/total:.2f}%')
         print(f'Val Acc: {100*val_correct/val_total:.2f}%')
@@ -80,7 +80,6 @@ def train_model():
     }, final_model_path)
     
     print(f'Training completed!')
-    print(f'Best validation accuracy: {best_val_acc:.2f}%')
     print(f'Final model saved to: {final_model_path}')
 
 if __name__ == "__main__":
