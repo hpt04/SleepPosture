@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能床垫实时监测系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+
+        body {
+            background-color: #f0f2f5;
+            color: #333;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-gap: 20px;
+        }
+
+        .header {
+            grid-column: 1 / -1;
+            background-color: #1890ff;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin: 0;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #52c41a;
+            margin-right: 8px;
+        }
+
+        .status-text {
+            font-size: 14px;
+        }
+
+        .panel {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            padding: 20px;
+            min-height: 300px;
+        }
+
+        .panel-header {
+            border-bottom: 1px solid #e8e8e8;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1890ff;
+        }
+
+        .panel-content {
+            height: 100%;
+        }
+
+        /* 热力图区域 */
+        .heatmap-container {
+            grid-column: 1;
+            grid-row: 2 / 4;
+        }
+
+        #heatmap-canvas {
+            width: 100%;
+            height: 500px;
+            background-color: #f9f9f9;
+            border: 1px solid #e8e8e8;
+        }
+
+        /* 人体姿态区域 */
+        .posture-container {
+            grid-column: 2;
+            grid-row: 2 / 4;
+        }
+
+        .posture-display {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 500px;
+        }
+
+        .human-figure {
+            width: 500px;
+            height: 350px;
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .posture-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background-color: #f9f9f9;
+            border: 1px solid #e8e8e8;
+        }
+
+        .airbag-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        /* 气囊状态区域 */
+        .airbag-container {
+            grid-column: 2;
+            grid-row: 3;
+        }
+
+        .airbag-display {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+        }
+
+        .airbag {
+            width: 80px;
+            height: 80px;
+            margin: 10px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+            background-color: #d9d9d9;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.5s ease;
+        }
+
+        .airbag.active {
+            background-color: #1890ff;
+        }
+
+        .airbag-fill {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: #1890ff;
+            transition: height 1s ease;
+        }
+
+        /* 指标面板区域 */
+        .metrics-container {
+            grid-column: 1 / -1;
+            grid-row: 4;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-gap: 15px;
+        }
+        
+        .pai-card {
+            background-color: #f0f7ff;
+            border: 1px solid #91caff;
+        }
+
+        .metric-card {
+            background-color: #f9f9f9;
+            border-radius: 6px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .metric-title {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .metric-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #1890ff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* 颜色图例 */
+        .legend {
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .legend-gradient {
+            width: 200px;
+            height: 20px;
+            background: linear-gradient(to right, #52c41a, #fadb14, #f5222d);
+            margin: 0 10px;
+        }
+
+        .legend-label {
+            font-size: 12px;
+            color: #666;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+
+            .heatmap-container,
+            .posture-container,
+            .airbag-container,
+            .metrics-container {
+                grid-column: 1;
+            }
+
+            .heatmap-container {
+                grid-row: 2;
+            }
+
+            .posture-container {
+                grid-row: 3;
+            }
+
+            .airbag-container {
+                grid-row: 4;
+            }
+
+            .metrics-container {
+                grid-row: 5;
+            }
+
+            .metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- 页面头部 -->
+    <div class="header">
+        <h1>智能床垫实时监测系统</h1>
+        <div class="status-indicator">
+            <div class="status-dot"></div>
+            <div class="status-text">数据连接中...</div>
+        </div>
+    </div>
+
+    <!-- 热力图区域 -->
+    <div class="panel heatmap-container">
+        <div class="panel-header">
+            <div class="panel-title">床垫压力热力图</div>
+            <div class="timestamp">时间: --:--:--</div>
+        </div>
+        <div class="panel-content">
+            <canvas id="heatmap-canvas"></canvas>
+            <div class="legend">
+                <span class="legend-label">低压力</span>
+                <div class="legend-gradient"></div>
+                <span class="legend-label">高压力</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 人体姿态区域 -->
+    <div class="panel posture-container">
+        <div class="panel-header">
+            <div class="panel-title">人体姿态</div>
+            <div class="posture-status">当前: 无人</div>
+        </div>
+        <div class="panel-content">
+            <div class="posture-display">
+                <div class="human-figure" id="human-figure">
+                    <img id="posture-image"
+                         class="posture-image"
+                         src="./image/无人.png"
+                         alt="人体姿态">
+                    <canvas id="airbag-canvas" class="airbag-canvas"></canvas>
+                </div>
+                <div class="posture-label" id="posture-label">无人</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 气囊状态信息 (隐藏，已合并到人体姿态模块) -->
+    <div class="panel airbag-container" style="display: none;">
+        <div class="panel-header">
+            <div class="panel-title">气囊状态</div>
+            <div class="airbag-status">状态: 关闭</div>
+        </div>
+    </div>
+
+    <!-- 指标面板区域 -->
+    <div class="panel metrics-container">
+        <div class="panel-header">
+            <div class="panel-title">实时指标</div>
+        </div>
+        <div class="panel-content">
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-title">检测侧</div>
+                    <div class="metric-value" id="side">--</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">气囊状态</div>
+                    <div class="metric-value" id="airbag-status">关闭</div>
+                </div>
+                <div class="metric-card pai-card" style="grid-column: span 2;">
+                    <div class="metric-title">接触面指数</div>
+                    <div class="metric-value" id="PAI">[]</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">平均压力值</div>
+                    <div class="metric-value" id="avg-pressure">0.00</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">压力指数</div>
+                    <div class="metric-value" id="PI">0</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">最大压力</div>
+                    <div class="metric-value" id="max-pressure">0</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">舒适度等级</div>
+                    <div class="metric-value" id="comfort-level">0</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 全局变量
+    let ws = null;
+    let currentData = null;
+    let previousData = null;
+    let animationInProgress = false;
+    let heatmapCanvas = null;
+    let heatmapCtx = null;
+    let animationFrameId = null;
+
+    // 热力图配置
+    const heatmapConfig = {
+        rows: 40,            // 热力图行数
+        cols: 26,           // 热力图列数
+        cellSize: 0,        // 单元格大小（会动态计算）
+        maxValue: 10,       // 最大压力值（用于颜色映射）
+        colorLow: [82, 196, 26],    // 低压力颜色 (RGB) - 绿色
+        colorMid: [250, 219, 20],   // 中压力颜色 (RGB) - 黄色
+        colorHigh: [245, 34, 45]    // 高压力颜色 (RGB) - 红色
+    };
+    // 不再使用传感器映射表，直接使用pressure数组中的1040个数值
+
+    // 姿态和状态映射表
+    const postureMap = {
+        'up': '仰卧',
+        'down': '俯卧',
+        'left': '左侧卧',
+        'right': '右侧卧',
+        'sitdown': '坐姿',
+        'no': '无人'
+    };
+
+    const statusMap = {
+        'no': '无人',
+        'in': '在床',
+        'change': '睡姿改变',
+        'inbed': '上床',
+        'outbed': '下床'
+    };
+
+    const sideMap = {
+        'left': '左侧',
+        'right': '右侧'
+    };
+
+    // 初始化函数
+    function init() {
+        // 初始化WebSocket连接
+        setupWebSocket();
+
+        // 初始化热力图Canvas
+        setupHeatmapCanvas();
+
+        // 初始化人体姿态图
+        setupHumanFigure('no');
+
+        console.log('系统初始化完成');
+    }
+
+    // 设置WebSocket连接
+    function setupWebSocket() {
+        const statusDot = document.querySelector('.status-dot');
+        const statusText = document.querySelector('.status-text');
+
+        ws = new WebSocket('ws://127.0.0.1:8000');
+
+        ws.onopen = function() {
+            console.log('WebSocket连接已建立');
+            statusDot.style.backgroundColor = '#52c41a';
+            statusText.textContent = '数据已连接';
+        };
+
+        ws.onmessage = function(event) {
+            try {
+                // 保存前一帧数据用于动画过渡
+                if (currentData) {
+                    previousData = {...currentData};
+                }
+
+                // 解析新数据
+                currentData = JSON.parse(event.data);
+                console.log('收到新数据:', currentData);
+
+                // 更新UI
+                updateUI(currentData);
+            } catch (error) {
+                console.error('处理数据时出错:', error);
+            }
+        };
+
+        ws.onclose = function() {
+            console.log('WebSocket连接已关闭');
+            statusDot.style.backgroundColor = '#f5222d';
+            statusText.textContent = '数据连接已断开';
+
+            // 尝试重新连接
+            setTimeout(setupWebSocket, 3000);
+        };
+
+        ws.onerror = function(error) {
+            console.error('WebSocket错误:', error);
+            statusDot.style.backgroundColor = '#f5222d';
+            statusText.textContent = '数据连接错误';
+        };
+    }
+
+    // 设置热力图Canvas
+    function setupHeatmapCanvas() {
+        heatmapCanvas = document.getElementById('heatmap-canvas');
+        heatmapCtx = heatmapCanvas.getContext('2d');
+
+        // 设置Canvas尺寸
+        const container = heatmapCanvas.parentElement;
+        heatmapCanvas.width = container.clientWidth;
+        heatmapCanvas.height = 500;
+
+        // 计算单元格大小
+        heatmapConfig.cellSize = Math.min(
+            heatmapCanvas.width / heatmapConfig.cols,
+            heatmapCanvas.height / heatmapConfig.rows
+        );
+
+        // 绘制初始空白热力图
+        drawEmptyHeatmap();
+
+        // 监听窗口大小变化，重新调整热力图
+        window.addEventListener('resize', function() {
+            heatmapCanvas.width = container.clientWidth;
+            heatmapCanvas.height = 500;
+
+            heatmapConfig.cellSize = Math.min(
+                heatmapCanvas.width / heatmapConfig.cols,
+                heatmapCanvas.height / heatmapConfig.rows
+            );
+
+            if (currentData) {
+                updateHeatmap(currentData);
+            } else {
+                drawEmptyHeatmap();
+            }
+        });
+    }
+
+    // 绘制空白热力图
+    function drawEmptyHeatmap() {
+        heatmapCtx.fillStyle = '#f9f9f9';
+        heatmapCtx.fillRect(0, 0, heatmapCanvas.width, heatmapCanvas.height);
+
+        heatmapCtx.font = '16px Microsoft YaHei';
+        heatmapCtx.fillStyle = '#999';
+        heatmapCtx.textAlign = 'center';
+        heatmapCtx.textBaseline = 'middle';
+        heatmapCtx.fillText('等待数据...', heatmapCanvas.width / 2, heatmapCanvas.height / 2);
+    }
+
+    // 设置人体姿态（图片切换+气囊Canvas初始化）
+    function setupHumanFigure(posture) {
+        const postureImage = document.getElementById('posture-image'); // 姿态图片
+        const airbagCanvas = document.getElementById('airbag-canvas'); // 气囊Canvas
+        const ctx = airbagCanvas.getContext('2d'); // 气囊Canvas上下文
+        const displayName = postureMap[posture] || '无人'; // 姿态名称（如“仰卧”）
+
+        airbagCanvas.width = 500;
+        airbagCanvas.height = 350;
+
+        ctx.clearRect(0, 0, airbagCanvas.width, airbagCanvas.height);
+
+        document.getElementById('posture-label').textContent = displayName;
+
+        switch (posture) {
+            case 'no':
+                postureImage.src = './image/无人.png';
+                break;
+            case 'up':
+                postureImage.src = './image/仰卧.png';
+                break;
+            case 'down':
+                postureImage.src = './image/俯卧.png';
+                break;
+            case 'left':
+                postureImage.src = './image/左侧卧.png';
+                break;
+            case 'right':
+                postureImage.src = './image/右侧卧.png';
+                break;
+            case 'sitdown':
+                postureImage.src = './image/坐.png';
+                break;
+            default:
+                postureImage.src = './image/无人.png';
+        }
+
+        if (posture === 'no') {
+            return;
+        }
+
+        let airbags = [];
+        // if (posture === 'left' || posture === 'right') {
+        //     // 侧卧：肩背、腰部、臀部气囊位置
+        //     airbags = [
+        //         { x: 130, y: 100, width: 80, height: 20, label: '肩背' },
+        //         { x: 200, y: 120, width: 80, height: 20, label: '腰部' },
+        //         { x: 280, y: 110, width: 80, height: 20, label: '臀部' }
+        //     ];
+        // } else if (posture === 'up') {
+        //     // 仰卧：肩背、腰部、臀部气囊位置
+        //     airbags = [
+        //         { x: 100, y: 100, width: 80, height: 20, label: '肩背' },
+        //         { x: 200, y: 100, width: 80, height: 20, label: '腰部' },
+        //         { x: 300, y: 100, width: 80, height: 20, label: '臀部' }
+        //     ];
+        // } else if (posture === 'down') {
+        //     // 俯卧：肩背、腰部、臀部气囊位置
+        //     airbags = [
+        //         { x: 100, y: 80, width: 80, height: 20, label: '肩背' },
+        //         { x: 200, y: 80, width: 80, height: 20, label: '腰部' },
+        //         { x: 300, y: 80, width: 80, height: 20, label: '臀部' }
+        //     ];
+        // } else if (posture === 'sitdown') {
+        //     // 坐姿：肩背、腰部、臀部气囊位置
+        //     airbags = [
+        //         { x: 170, y: 70, width: 60, height: 20, label: '肩背' },
+        //         { x: 190, y: 100, width: 60, height: 20, label: '腰部' },
+        //         { x: 210, y: 130, width: 60, height: 20, label: '臀部' }
+        //     ];
+        // }
+
+        // 8. 保存气囊位置到全局（供后续更新气囊状态用）
+        window.airbagPositions = airbags;
+
+        // 9. 绘制初始气囊（透明状态，后续根据数据更新）
+        drawAirbags(ctx, airbags);
+    }
+
+    // 绘制气囊（适配新的airbag-canvas）
+    function drawAirbags(ctx, airbags) {
+        airbags.forEach((airbag, index) => {
+            // 绘制气囊（半透明蓝色，与原风格一致）
+            ctx.fillStyle = 'rgba(24,144,255,0.3)'; // 原透明蓝色
+            ctx.strokeStyle = '#1890ff'; // 原蓝色边框
+            ctx.lineWidth = 1;
+
+            // 绘制椭圆形气囊
+            drawEllipse(ctx, airbag.x, airbag.y, airbag.width/2, airbag.height/2);
+
+            // 绘制气囊标签（如“肩背”）
+            ctx.font = '12px Microsoft YaHei';
+            ctx.fillStyle = '#666'; // 原标签颜色
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            ctx.fillText(airbag.label, airbag.x, airbag.y + airbag.height/2 + 5);
+        });
+    }
+
+    // 绘制椭圆（用于气囊绘制）
+    function drawEllipse(ctx, x, y, radiusX, radiusY) {
+        ctx.beginPath();
+        ctx.ellipse(x, y, radiusX, radiusY, 0, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.stroke();
+    }
+
+    // 更新UI
+    function updateUI(data) {
+        // 更新时间戳
+        updateTimestamp(data.time);
+
+        // 更新指标面板
+        updateMetrics(data);
+
+        // 更新热力图
+        try {
+            console.log('尝试更新热力图，数据:', data.pressure ? data.pressure.substring(0, 30) + '...' : '无数据');
+            updateHeatmap(data);
+        } catch (error) {
+            console.error('更新热力图时出错:', error);
+            drawEmptyHeatmap();
+        }
+
+        // 更新人体姿态
+        updatePosture(data);
+
+        // 更新气囊状态
+        updateAirbagStatus(data);
+    }
+
+    // 更新时间戳
+    function updateTimestamp(timestamp) {
+        const timestampElement = document.querySelector('.timestamp');
+        if (timestamp) {
+            timestampElement.textContent = `时间: ${timestamp}`;
+        }
+    }
+
+    // 更新指标面板
+    function updateMetrics(data) {
+        // 更新平均压力值
+        document.getElementById('avg-pressure').textContent = data.avg_pressure || '0.00';
+
+        // 更新压力指数
+        document.getElementById('PI').textContent = data.PI || '0';
+
+        // 更新舒适度等级
+        document.getElementById('comfort-level').textContent = data.com_level || '0';
+
+        // 更新检测侧
+        document.getElementById('side').textContent = sideMap[data.side] || '--';
+
+        // 更新姿态
+        // 注意：我们在UI中移除了posture指标，但仍需要在人体姿态模块中使用该数据
+
+        // 更新气囊状态
+        document.getElementById('airbag-status').textContent = data.airbag_status === 'open' ? '开启' : '关闭';
+
+        // 更新接触面指数(PAI)
+        document.getElementById('PAI').textContent = data.PAI ? data.PAI.replace(/\[|\]/g, '') : '[]';
+
+        // 更新最大压力
+        let maxPressure = 0;
+        try {
+            const pressureArray = JSON.parse(data.pressure);
+            maxPressure = Math.max(...pressureArray);
+        } catch (error) {
+            console.error('解析压力数据出错:', error);
+        }
+        document.getElementById('max-pressure').textContent = maxPressure;
+    }
+
+    // 绘制床垫轮廓
+    function drawBedOutline(x, y, width, height) {
+        heatmapCtx.strokeStyle = '#1890ff';
+        heatmapCtx.lineWidth = 2;
+        heatmapCtx.strokeRect(x, y, width, height);
+
+        // 绘制枕头区域
+        const pillowHeight = height * 0.2;
+        heatmapCtx.strokeStyle = 'rgba(24, 144, 255, 0.5)';
+        heatmapCtx.setLineDash([5, 5]);
+        heatmapCtx.strokeRect(x, y, width, pillowHeight);
+        heatmapCtx.setLineDash([]);
+
+        // 添加标签
+        heatmapCtx.fillStyle = '#1890ff';
+        heatmapCtx.font = '12px Microsoft YaHei';
+        heatmapCtx.textAlign = 'center';
+        heatmapCtx.fillText('枕头区', x + width / 2, y + pillowHeight / 2);
+    }
+
+    // 从压力数组直接绘制热力图（40*26=1040个数值）
+    function drawHeatmapFromArray(pressureArray) {
+        heatmapCtx.clearRect(0, 0, heatmapCanvas.width, heatmapCanvas.height);
+        const startX = (heatmapCanvas.width - heatmapConfig.cellSize * heatmapConfig.cols) / 2;
+        const startY = (heatmapCanvas.height - heatmapConfig.cellSize * heatmapConfig.rows) / 2;
+        
+        // 直接遍历1040个压力值，按照40行26列的网格排列
+        for (let r = 0; r < heatmapConfig.rows; r++) {
+            for (let c = 0; c < heatmapConfig.cols; c++) {
+                const index = r * heatmapConfig.cols + c;
+                const value = pressureArray[index] || 0;
+                const x = startX + c * heatmapConfig.cellSize;
+                const y = startY + r * heatmapConfig.cellSize;
+                drawHeatmapCell(x, y, heatmapConfig.cellSize, value);
+            }
+        }
+        
+        drawBedOutline(startX, startY, heatmapConfig.cellSize * heatmapConfig.cols, heatmapConfig.cellSize * heatmapConfig.rows);
+    }
+
+    // 过渡动画
+    function animateHeatmapTransition(prevArray, currArray, duration) {
+        if (animationFrameId) cancelAnimationFrame(animationFrameId);
+        const startTime = performance.now();
+        function step(now) {
+            const t = Math.min((now - startTime) / duration, 1);
+            const interpArray = prevArray.map((v, i) => v + ( (currArray[i] || 0) - v ) * t);
+            drawHeatmapFromArray(interpArray);
+            if (t < 1) {
+                animationFrameId = requestAnimationFrame(step);
+            }
+        }
+        animationFrameId = requestAnimationFrame(step);
+    }
+
+    // 更新热力图
+    function updateHeatmap(data) {
+        try {
+            if (!data || !data.pressure) {
+                console.error('数据或pressure字段不存在');
+                drawEmptyHeatmap();
+                return;
+            }
+            
+            console.log('解析pressure数据:', typeof data.pressure, data.pressure.substring(0, 50));
+            const newArray = JSON.parse(data.pressure);
+            console.log('解析后的数组长度:', newArray.length);
+            
+            if (previousData && previousData.pressure) {
+                const prevArray = JSON.parse(previousData.pressure);
+                // 使用过渡动画
+                animateHeatmapTransition(prevArray, newArray, 1000);
+            } else {
+                // 直接绘制
+                drawHeatmapFromArray(newArray);
+            }
+        } catch (error) {
+            console.error('更新热力图时出错:', error);
+            drawEmptyHeatmap();
+        }
+    }
+
+    // 绘制热力图单元格
+    function drawHeatmapCell(x, y, size, value) {
+        // 计算颜色
+        const color = getColorForValue(value);
+
+        // 绘制单元格
+        heatmapCtx.fillStyle = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+        heatmapCtx.fillRect(x, y, size, size);
+
+        // 绘制单元格边框
+        heatmapCtx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        heatmapCtx.lineWidth = 0.5;
+        heatmapCtx.strokeRect(x, y, size, size);
+    }
+
+    // 根据值获取颜色
+    function getColorForValue(value) {
+        // 归一化值 (0-1范围)
+        const normalizedValue = Math.min(value / heatmapConfig.maxValue, 1);
+
+        let r, g, b;
+
+        if (normalizedValue < 0.5) {
+            // 从低压力颜色到中压力颜色
+            const t = normalizedValue * 2;
+            r = heatmapConfig.colorLow[0] + t * (heatmapConfig.colorMid[0] - heatmapConfig.colorLow[0]);
+            g = heatmapConfig.colorLow[1] + t * (heatmapConfig.colorMid[1] - heatmapConfig.colorLow[1]);
+            b = heatmapConfig.colorLow[2] + t * (heatmapConfig.colorMid[2] - heatmapConfig.colorLow[2]);
+        } else {
+            // 从中压力颜色到高压力颜色
+            const t = (normalizedValue - 0.5) * 2;
+            r = heatmapConfig.colorMid[0] + t * (heatmapConfig.colorHigh[0] - heatmapConfig.colorMid[0]);
+            g = heatmapConfig.colorMid[1] + t * (heatmapConfig.colorHigh[1] - heatmapConfig.colorMid[1]);
+            b = heatmapConfig.colorMid[2] + t * (heatmapConfig.colorHigh[2] - heatmapConfig.colorMid[2]);
+        }
+
+        // 如果值为0，返回透明色
+        if (value === 0) {
+            return [240, 240, 240]; // 浅灰色背景
+        }
+
+        return [Math.round(r), Math.round(g), Math.round(b)];
+    }
+
+    // 更新人体姿态（仅保留图片切换和淡入动画）
+    function updatePosture(data) {
+        const postureElement = document.querySelector('.posture-status');
+        const posture = data.posture || 'no';
+        // 更新姿态状态文本（如“当前：仰卧”）
+        postureElement.textContent = `当前: ${postureMap[posture] || '无人'}`;
+
+        // 切换姿态图片并添加淡入动画
+        const humanFigure = document.getElementById('human-figure');
+        const newPosture = data.posture || 'no';
+
+        // 1. 先将容器设为透明（准备淡入）
+        humanFigure.style.opacity = 0;
+        // 2. 切换新姿态图片
+        setupHumanFigure(newPosture);
+        // 3. 延迟10ms后添加过渡动画，实现淡入效果
+        setTimeout(() => {
+            humanFigure.style.transition = 'opacity 0.5s ease'; // 0.5秒淡入
+            humanFigure.style.opacity = 1;
+        }, 10);
+    }
+
+    // 更新气囊状态（适配新的airbag-canvas）
+    function updateAirbagStatus(data) {
+        const airbagStatusElement = document.querySelector('.airbag-status');
+        const status = data.airbag_status || 'close';
+        // 更新气囊状态文本（如“状态：开启”）
+        airbagStatusElement.textContent = `状态: ${status === 'open' ? '开启' : '关闭'}`;
+
+        // 解析气囊时间数组
+        try {
+            const airbagTimeArray = JSON.parse(data.airbag_time || '[0,0,0,0,0]');
+            // 获取新的气囊Canvas
+            const airbagCanvas = document.getElementById('airbag-canvas');
+            if (!airbagCanvas || !window.airbagPositions) return;
+
+            const ctx = airbagCanvas.getContext('2d');
+            const maxTime = Math.max(...airbagTimeArray.slice(0,3), 1); // 避免除以0
+            const posture = data.posture || 'no';
+
+            // 1. 清除旧气囊（避免残留）
+            ctx.clearRect(0, 0, airbagCanvas.width, airbagCanvas.height);
+
+            // 2. 如果是“无人”或气囊关闭，无需绘制气囊
+            if (posture === 'no' || status !== 'open') {
+                return;
+            }
+
+            // 3. 绘制新气囊（根据气囊时间数组调整透明度和大小）
+            window.airbagPositions.forEach((airbag, idx) => {
+                const val = airbagTimeArray[idx] || 0;
+                const alpha = val / maxTime; // 透明度（0-1）
+                const growFactor = 1 + (alpha * 0.3); // 气囊膨胀比例（最大30%）
+
+                // 绘制气囊（动态透明度）
+                ctx.fillStyle = `rgba(24,144,255,${alpha.toFixed(2)})`;
+                ctx.strokeStyle = '#1890ff';
+                ctx.lineWidth = 1;
+
+                // 绘制膨胀后的椭圆形气囊
+                drawEllipse(
+                    ctx,
+                    airbag.x,
+                    airbag.y,
+                    (airbag.width/2) * growFactor,
+                    (airbag.height/2) * growFactor
+                );
+
+                // 重绘气囊标签（避免被覆盖）
+                ctx.font = '12px Microsoft YaHei';
+                ctx.fillStyle = '#666';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'top';
+                ctx.fillText(airbag.label, airbag.x, airbag.y + (airbag.height/2) * growFactor + 5);
+            });
+
+        } catch (error) {
+            console.error('解析气囊时间数据出错:', error);
+        }
+    }
+
+    // 页面加载完成后初始化
+    document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
